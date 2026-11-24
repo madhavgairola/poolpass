@@ -71,6 +71,15 @@ describe("PoolPass - Blockchain-Based Yield-Funded Subscription System", functio
       expect(options[2].apyBps).to.equal(1800n); // 18%
       expect(options[3].apyBps).to.equal(2400n); // 24%
     });
+
+    it("should allow any user to create a custom plan like Gemini Pro", async function () {
+      const tx = await poolPass.connect(alice).createCustomPlan("Gemini Pro", ethers.parseEther("20"));
+      await tx.wait();
+      const plans = await poolPass.getAllPlans();
+      expect(plans.length).to.equal(4);
+      expect(plans[3].name).to.equal("Gemini Pro");
+      expect(plans[3].monthlyFee).to.equal(ethers.parseEther("20"));
+    });
   });
 
   describe("2. Duration-Adjusted Stake Calculation", function () {

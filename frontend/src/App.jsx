@@ -281,6 +281,7 @@ export default function App() {
               tokenContract={contracts?.token}
               userAddress={userAddress}
               blockTimestamp={blockTimestamp}
+              onPlanCreated={loadData}
               onSubscribeSuccess={() => {
                 loadData();
                 setActiveTab('subscriptions');

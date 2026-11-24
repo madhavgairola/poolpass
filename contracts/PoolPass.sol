@@ -377,9 +377,21 @@ contract PoolPass is Ownable {
         emit TreasuryUpdated(_newTreasury);
     }
 
-    function addPlan(string memory name, uint256 monthlyFee) external onlyOwner {
-        plans.push(Plan(plans.length, name, monthlyFee, true));
-        emit PlanCreated(plans.length - 1, name, monthlyFee);
+    /**
+     * @notice Create a custom subscription plan (e.g. Gemini Pro, Cursor, ChatGPT)
+     * @param name Name of the service or plan
+     * @param monthlyFee Monthly fee in tokens (18 decimals)
+     */
+    function createCustomPlan(string memory name, uint256 monthlyFee) public returns (uint256 newPlanId) {
+        require(bytes(name).length > 0, "Plan name required");
+        require(monthlyFee > 0, "Monthly fee must be greater than 0");
+        newPlanId = plans.length;
+        plans.push(Plan(newPlanId, name, monthlyFee, true));
+        emit PlanCreated(newPlanId, name, monthlyFee);
+    }
+
+    function addPlan(string memory name, uint256 monthlyFee) external {
+        createCustomPlan(name, monthlyFee);
     }
 
     function togglePlan(uint256 planId, bool active) external onlyOwner {

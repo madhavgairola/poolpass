@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   ShieldCheck,
   TrendingUp,
@@ -9,16 +9,20 @@ import {
   ExternalLink,
   Zap,
   CheckCircle2,
-  DollarSign,
-  Layers,
-  Cpu,
-  Terminal,
-  Play,
+  Plus,
 } from 'lucide-react';
-import { formatToken, formatTimestamp, formatTimeRemaining } from '../utils/web3';
+import { formatToken, formatTimestamp } from '../utils/web3';
 import { ethers } from 'ethers';
 
 // Platform Brand Logos (Clean SVG Vectors)
+function GoogleGeminiIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3.5a6.5 6.5 0 016.5 6.5c0 1.8-.73 3.43-1.9 4.6l-1.42-1.42A4.48 4.48 0 0016.5 12 4.5 4.5 0 0012 7.5v-2zm-6.5 6.5A6.5 6.5 0 0112 5.5v2A4.5 4.5 0 007.5 12c0 1.24.5 2.37 1.32 3.18L7.4 16.6A6.47 6.47 0 015.5 12z" />
+    </svg>
+  );
+}
+
 function GithubIcon({ className = "w-5 h-5" }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -58,8 +62,8 @@ function CloudServerIcon({ className = "w-5 h-5" }) {
 
 export default function HomeOverview({
   userSubscription,
-  plans,
-  durationOptions,
+  plans = [],
+  durationOptions = [],
   blockTimestamp,
   tokenBalance,
   onNavigate,
@@ -81,7 +85,6 @@ export default function HomeOverview({
   const currentAccruedYield = userSubscription?.currentAccruedYield || 0n;
   const startTime = userSubscription?.startTime || 0n;
   const lockExpiry = userSubscription?.lockExpiry || 0n;
-  const timeRemaining = userSubscription?.timeRemaining || 0n;
 
   const startSec = Number(startTime);
   const expirySec = Number(lockExpiry);
@@ -92,10 +95,9 @@ export default function HomeOverview({
   const totalSavedFloat = settledFloat + accruedFloat;
   const principalFloat = parseFloat(ethers.formatEther(stakedPrincipal));
 
-  // Default projection if not yet subscribed
   const displaySaved = hasActiveSub ? totalSavedFloat : 45.0;
   const displayPrincipal = hasActiveSub ? principalFloat : 1155.83;
-  const displayPlanName = hasActiveSub ? planName : 'Pro Pass (Preview)';
+  const displayPlanName = hasActiveSub ? planName : 'Pro Pass';
 
   // Calculate upcoming cycle deadline
   const cycleSeconds = 30 * 86400;
@@ -104,268 +106,197 @@ export default function HomeOverview({
     : nowSec + 30 * 86400;
 
   const daysToNextDeadline = Math.max(0, Math.ceil((nextMilestoneSec - nowSec) / 86400));
-  const daysToMaturity = hasActiveSub && expirySec > nowSec
-    ? Math.max(0, Math.ceil((expirySec - nowSec) / 86400))
-    : 90;
 
-  // Platform Coverage Matrix
-  const coveredPlatforms = [
+  // Build platform list, incorporating custom plans dynamically
+  const isCustomActive = hasActiveSub && !['Basic Pass', 'Pro Pass', 'Enterprise Pass'].includes(planName);
+
+  const platforms = [];
+
+  if (isCustomActive) {
+    platforms.push({
+      id: 'active-custom',
+      name: planName,
+      category: 'Custom Service',
+      icon: GoogleGeminiIcon,
+      monthlyRate: parseFloat(ethers.formatEther(userSubscription.monthlyFee || 0n)),
+      status: 'Active • Yield Streaming',
+      savedToDate: displaySaved.toFixed(2),
+      deadlineSec: nextMilestoneSec,
+      isCovered: true,
+    });
+  }
+
+  // Standard platforms
+  platforms.push(
     {
       id: 'github',
       name: 'GitHub Enterprise & Copilot',
-      category: 'Developer Platform & CI/CD',
+      category: 'Developer Platform',
       icon: GithubIcon,
       monthlyRate: 10.0,
-      allocationPercent: '66.7%',
-      status: hasActiveSub ? 'Active • Yield Streaming' : 'Ready to Activate',
+      status: hasActiveSub && !isCustomActive ? 'Active • Yield Streaming' : 'Available',
       savedToDate: (displaySaved * 0.67).toFixed(2),
       deadlineSec: nextMilestoneSec,
-      tierRequired: 'Pro Pass',
-      isCovered: true,
-      description: 'Unlimited private repositories, GitHub Actions compute minutes, and Copilot AI paired programming.',
+      isCovered: hasActiveSub && !isCustomActive,
     },
     {
       id: 'claude',
-      name: 'Claude Pro & LLM Gateway',
-      category: 'Frontier AI & LLM Compute',
+      name: 'Claude Pro & API Gateway',
+      category: 'AI Compute',
       icon: ClaudeIcon,
       monthlyRate: 5.0,
-      allocationPercent: '33.3%',
-      status: hasActiveSub ? 'Active • Yield Streaming' : 'Ready to Activate',
+      status: hasActiveSub && !isCustomActive ? 'Active • Yield Streaming' : 'Available',
       savedToDate: (displaySaved * 0.33).toFixed(2),
       deadlineSec: nextMilestoneSec,
-      tierRequired: 'Pro Pass',
-      isCovered: true,
-      description: 'Dedicated priority quota for Claude 3.5 Sonnet, Claude Opus, and low-latency API completions.',
+      isCovered: hasActiveSub && !isCustomActive,
+    },
+    {
+      id: 'gemini',
+      name: 'Gemini Advanced & Workspace',
+      category: 'Multimodal AI',
+      icon: GoogleGeminiIcon,
+      monthlyRate: 20.0,
+      status: planName.includes('Gemini') ? 'Active • Yield Streaming' : 'Custom Plan',
+      savedToDate: planName.includes('Gemini') ? displaySaved.toFixed(2) : '0.00',
+      deadlineSec: nextMilestoneSec,
+      isCovered: planName.includes('Gemini'),
     },
     {
       id: 'tradingview',
       name: 'TradingView Pro+ Analytics',
-      category: 'Market Intelligence & Charts',
+      category: 'Market Intelligence',
       icon: TradingViewIcon,
       monthlyRate: 10.0,
-      allocationPercent: 'Add-on Tier',
-      status: planName.includes('Enterprise') ? 'Active • Yield Streaming' : 'Available with Enterprise Pass',
+      status: planName.includes('Enterprise') ? 'Active • Yield Streaming' : 'Enterprise Tier',
       savedToDate: planName.includes('Enterprise') ? '20.00' : '0.00',
       deadlineSec: nextMilestoneSec,
-      tierRequired: 'Enterprise Pass',
       isCovered: planName.includes('Enterprise'),
-      description: 'Multi-chart layouts, custom Pine Script indicators, and real-time decentralized exchange feeds.',
-    },
-    {
-      id: 'cloud',
-      name: 'Cloud Node & Edge Hosting',
-      category: 'Decentralized Infrastructure',
-      icon: CloudServerIcon,
-      monthlyRate: 15.0,
-      allocationPercent: 'Add-on Tier',
-      status: planName.includes('Enterprise') ? 'Active • Yield Streaming' : 'Available with Enterprise Pass',
-      savedToDate: planName.includes('Enterprise') ? '30.00' : '0.00',
-      deadlineSec: nextMilestoneSec,
-      tierRequired: 'Enterprise Pass',
-      isCovered: planName.includes('Enterprise'),
-      description: 'Dedicated RPC nodes, containerized microservices, and high-availability edge proxy bandwidth.',
-    },
-  ];
+    }
+  );
 
   return (
-    <div className="space-y-8">
-      {/* 1. Executive Portfolio Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
-        <div className="space-y-2 max-w-2xl">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hasActiveSub ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-            </span>
-            <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
-              {hasActiveSub ? `Active Yield-Funded Position: ${displayPlanName}` : 'Portfolio Standby • Ready to Stake'}
+    <div className="space-y-6">
+      {/* 1. Header with Direct Action Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${hasActiveSub ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+            <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+              {hasActiveSub ? `ACTIVE POSITION: ${displayPlanName.toUpperCase()}` : 'PORTFOLIO STANDBY'}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-sans">
-            Subscription Capital Portfolio
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white font-sans mt-0.5">
+            Subscription Portfolio
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Zero out-of-pocket software subscriptions. Stablecoin principal earns automated lending yield in Aave/Compound liquidity pools, paying recurring service fees while preserving 100% of your collateral.
-          </p>
         </div>
 
-        {/* Action Shortcuts */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => onNavigate('subscriptions')}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 font-bold text-xs shadow-sm transition flex items-center gap-2 cursor-pointer"
-          >
-            <span>Active Position & Stream</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-
+        <div className="flex items-center gap-2">
           <button
             onClick={() => onNavigate('plans')}
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition flex items-center gap-2 cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
           >
-            <span>Explore Plans & Rates</span>
-            <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add / Browse Plans</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate('subscriptions')}
+            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Playback Stream</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* 2. Executive Capital Realization & Savings Statement */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Metric 1: Total Subscription Capital Saved */}
-        <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Total Subscription Fees Saved</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-[#00e599] border border-emerald-500/20">
-              100% Interest Funded
-            </span>
+      {/* 2. Three Key Metrics (Direct & Obvious) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Saved */}
+        <div className="surface-panel rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-[11px] font-mono text-slate-400">Total Fees Saved</div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-emerald-600 dark:text-[#00e599] mt-1">
+            ${displaySaved.toFixed(2)} <span className="text-xs font-normal text-slate-400">mUSDC</span>
           </div>
-
-          <div className="mt-3">
-            <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white tracking-tight">
-              ${displaySaved.toFixed(2)} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-              <span>Out-of-Pocket Expense:</span>
-              <strong className="text-emerald-600 dark:text-[#00e599] font-mono font-bold">$0.00</strong>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-            Run-Rate: <span className="text-slate-800 dark:text-slate-200 font-medium">${(hasActiveSub ? parseFloat(ethers.formatEther(userSubscription.monthlyFee || 0n)) * 12 : 180).toFixed(0)}/year preserved</span>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">
+            Out-of-Pocket: <span className="font-semibold text-slate-700 dark:text-slate-300">$0.00</span>
           </div>
         </div>
 
-        {/* Metric 2: Working Capital Preserved */}
-        <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Staked Collateral Principal</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
-              Zero Principal Risk
-            </span>
+        {/* Collateral */}
+        <div className="surface-panel rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-[11px] font-mono text-slate-400">Staked Collateral</div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+            {displayPrincipal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}{' '}
+            <span className="text-xs font-normal text-slate-400">mUSDC</span>
           </div>
-
-          <div className="mt-3">
-            <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white tracking-tight">
-              {displayPrincipal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-              <span className="text-sm font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-              <span>Return Status:</span>
-              <strong className="text-slate-800 dark:text-slate-200 font-medium">100% Recoverable at Maturity</strong>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-            Lending Yield Rate: <span className="text-slate-800 dark:text-slate-200 font-medium">8.0% – 12.0% Fixed APY</span>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">
+            100% Principal Refundable
           </div>
         </div>
 
-        {/* Metric 3: Next Settlement Deadline */}
-        <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Next Billing Deadline</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-              {daysToNextDeadline > 0 ? `In ${daysToNextDeadline} Days` : 'Due Today'}
-            </span>
+        {/* Next Deadline */}
+        <div className="surface-panel rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-[11px] font-mono text-slate-400">Next Billing Deadline</div>
+          <div className="text-2xl sm:text-3xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+            {formatTimestamp(nextMilestoneSec)}
           </div>
-
-          <div className="mt-3">
-            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white tracking-tight">
-              {formatTimestamp(nextMilestoneSec)}
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-              <span>Target Amount:</span>
-              <strong className="text-slate-900 dark:text-white font-mono">$15.00 mUSDC</strong>
-              <span className="text-emerald-600 dark:text-[#00e599] font-medium">(Auto-Harvest)</span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-            Principal Unlock Date: <span className="text-slate-800 dark:text-slate-200 font-medium">{formatTimestamp(expirySec > 0 ? expirySec : nowSec + 90 * 86400)}</span>
+          <div className="text-[11px] font-mono text-slate-500 mt-1">
+            {daysToNextDeadline > 0 ? `In ${daysToNextDeadline} Days` : 'Due for Harvest'}
           </div>
         </div>
       </div>
 
-      {/* 3. Covered Platforms & Digital Services Grid */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight font-sans">
-              Covered Platforms & Subscribed Tools
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Digital platforms and developer tools funded by your staked collateral yield.
-            </p>
-          </div>
-          <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
-            Active Services: <span className="font-bold text-slate-900 dark:text-white">{hasActiveSub ? '2 Platforms Active' : '0 / 4 Active'}</span>
-          </div>
+      {/* 3. Subscribed Platforms Grid */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white font-sans uppercase tracking-wider">
+            Covered Digital Platforms
+          </h2>
+          <span className="text-xs font-mono text-slate-400">
+            {platforms.filter(p => p.isCovered).length} Active
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {coveredPlatforms.map((platform) => {
-            const IconComponent = platform.icon;
-            const isAccessible = hasActiveSub && platform.isCovered;
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {platforms.map((platform) => {
+            const Icon = platform.icon;
+            const isLive = platform.isCovered;
 
             return (
               <div
                 key={platform.id}
-                className={`surface-panel rounded-2xl p-5 border transition flex flex-col justify-between ${
-                  isAccessible
+                className={`surface-panel rounded-xl p-4 border transition flex items-center justify-between ${
+                  isLive
                     ? 'border-slate-200 dark:border-slate-800 shadow-sm'
-                    : 'border-slate-200/60 dark:border-slate-800/60 opacity-80'
+                    : 'border-slate-200/60 dark:border-slate-800/60 opacity-60'
                 }`}
               >
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isAccessible
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                      }`}>
-                        <IconComponent className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white font-sans">
-                          {platform.name}
-                        </h3>
-                        <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                          {platform.category}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                      isAccessible
-                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e599] border border-emerald-500/20'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                    }`}>
-                      {isAccessible ? '100% YIELD COVERED' : platform.tierRequired}
-                    </span>
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    isLive
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  }`}>
+                    <Icon className="w-4 h-4" />
                   </div>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                    {platform.description}
-                  </p>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white font-sans">
+                      {platform.name}
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400">
+                      ${platform.monthlyRate.toFixed(2)}/mo • {platform.category}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-3 gap-2 text-xs font-mono">
-                  <div>
-                    <div className="text-[10px] text-slate-400">Rate</div>
-                    <div className="font-bold text-slate-900 dark:text-white">${platform.monthlyRate.toFixed(2)}/mo</div>
+                <div className="text-right">
+                  <div className={`text-[11px] font-mono font-bold ${
+                    isLive ? 'text-emerald-600 dark:text-[#00e599]' : 'text-slate-400'
+                  }`}>
+                    {isLive ? `+$${platform.savedToDate} Saved` : 'Available'}
                   </div>
-
-                  <div>
-                    <div className="text-[10px] text-slate-400">Saved to Date</div>
-                    <div className="font-bold text-emerald-600 dark:text-[#00e599]">${platform.savedToDate}</div>
-                  </div>
-
-                  <div>
-                    <div className="text-[10px] text-slate-400">Next Deadline</div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">
-                      {isAccessible ? formatTimestamp(platform.deadlineSec) : '—'}
-                    </div>
+                  <div className="text-[10px] font-mono text-slate-400">
+                    {isLive ? `Due ${formatTimestamp(platform.deadlineSec)}` : 'Stake to unlock'}
                   </div>
                 </div>
               </div>
@@ -374,153 +305,50 @@ export default function HomeOverview({
         </div>
       </div>
 
-      {/* 4. Settlement Deadlines & Capital Unlock Schedule */}
-      <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight font-sans">
-              Billing Deadlines & Maturity Calendar
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Scheduled smart contract harvest milestones and 100% principal return date.
-            </p>
-          </div>
-
-          <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
-            Lock Duration: <span className="font-bold text-slate-900 dark:text-white">{hasActiveSub ? `${Math.round(totalDurationSec / 86400)} Days` : '90 Days (Standard)'}</span>
-          </div>
+      {/* 4. Settlement Schedule & Maturity */}
+      <div className="surface-panel rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white font-sans uppercase tracking-wider">
+            Settlement Timeline
+          </h2>
+          <span className="text-xs font-mono text-slate-400">
+            Cadence: Monthly (30d)
+          </span>
         </div>
 
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/60 mt-2">
-          {/* Milestone 1 */}
-          <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-[#00e599] border border-emerald-500/20 flex items-center justify-center font-mono text-xs font-bold">
-                01
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white font-sans">
-                  Billing Cycle 01 Settlement
-                </div>
-                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                  Scheduled Deadline: {formatTimestamp(hasActiveSub && startSec > 0 ? startSec + 30 * 86400 : nowSec + 30 * 86400)}
-                </div>
-              </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/60 mt-1">
+          <div className="py-2.5 flex items-center justify-between text-xs font-mono">
+            <div className="flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span className="text-slate-900 dark:text-white font-medium">Cycle 01 Yield Harvest</span>
+              <span className="text-[10px] text-slate-400">({formatTimestamp(hasActiveSub && startSec > 0 ? startSec + 30 * 86400 : nowSec + 30 * 86400)})</span>
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">$15.00 mUSDC</div>
-                <div className="text-[10px] font-mono text-emerald-600 dark:text-[#00e599]">Auto-routed via Yield</div>
-              </div>
-
-              <span className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-[#00e599] border border-emerald-500/20">
-                {hasActiveSub && settledFloat >= 14.9 ? '✓ Settled' : 'Yield Funded'}
-              </span>
+            <div className="font-bold text-emerald-600 dark:text-[#00e599]">
+              {hasActiveSub && settledFloat >= 14.9 ? '✓ Settled' : '$15.00 mUSDC Yield'}
             </div>
           </div>
 
-          {/* Milestone 2 */}
-          <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center font-mono text-xs font-bold">
-                02
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white font-sans">
-                  Billing Cycle 02 Settlement
-                </div>
-                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                  Scheduled Deadline: {formatTimestamp(hasActiveSub && startSec > 0 ? startSec + 60 * 86400 : nowSec + 60 * 86400)}
-                </div>
-              </div>
+          <div className="py-2.5 flex items-center justify-between text-xs font-mono">
+            <div className="flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+              <span className="text-slate-900 dark:text-white font-medium">Cycle 02 Yield Harvest</span>
+              <span className="text-[10px] text-slate-400">({formatTimestamp(hasActiveSub && startSec > 0 ? startSec + 60 * 86400 : nowSec + 60 * 86400)})</span>
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">$15.00 mUSDC</div>
-                <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">Accruing in Lending Pool</div>
-              </div>
-
-              <span className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                Scheduled
-              </span>
+            <div className="font-bold text-slate-700 dark:text-slate-300">
+              $15.00 mUSDC Scheduled
             </div>
           </div>
 
-          {/* Milestone 3: Maturity & Capital Recovery */}
-          <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/5 dark:bg-emerald-950/20 -mx-6 px-6 rounded-xl mt-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-mono text-xs font-bold shadow-sm">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white font-sans">
-                  Lock Expiry & 100% Principal Unlock
-                </div>
-                <div className="text-[11px] font-mono text-emerald-700 dark:text-[#00e599]">
-                  Recovery Date: {formatTimestamp(hasActiveSub && expirySec > 0 ? expirySec : nowSec + 90 * 86400)}
-                </div>
-              </div>
+          <div className="py-2.5 flex items-center justify-between text-xs font-mono bg-emerald-500/5 dark:bg-emerald-950/20 -mx-5 px-5 rounded-lg mt-1">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-[#00e599]" />
+              <span className="text-emerald-700 dark:text-[#00e599] font-bold">100% Principal Unlock</span>
+              <span className="text-[10px] text-emerald-600/80">({formatTimestamp(hasActiveSub && expirySec > 0 ? expirySec : nowSec + 90 * 86400)})</span>
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-xs font-mono font-bold text-emerald-700 dark:text-[#00e599]">
-                  +{displayPrincipal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mUSDC
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">Zero Loss • Staked Collateral</div>
-              </div>
-
-              <span className="px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-emerald-600 text-white shadow-sm">
-                100% Refundable
-              </span>
+            <div className="font-bold text-emerald-700 dark:text-[#00e599]">
+              +{displayPrincipal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mUSDC Refunded
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* 5. Economic Model Comparison: Traditional SaaS vs PoolPass */}
-      <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight font-sans mb-1">
-          Financial Model: Traditional SaaS vs PoolPass
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-          Why decentralized yield-funded subscriptions mathematically outperform corporate credit card billing.
-        </p>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
-                <th className="py-2.5 pr-4 font-medium">Financial Parameter</th>
-                <th className="py-2.5 px-4 font-medium text-red-500">Traditional Credit Card Billing</th>
-                <th className="py-2.5 pl-4 font-medium text-emerald-600 dark:text-[#00e599]">PoolPass Yield Protocol</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              <tr>
-                <td className="py-3 pr-4 font-sans font-semibold text-slate-900 dark:text-white">Annual Cash Outflow</td>
-                <td className="py-3 px-4 text-red-600 dark:text-red-400">-$180.00 (Permanent loss)</td>
-                <td className="py-3 pl-4 text-emerald-600 dark:text-[#00e599] font-bold">$0.00 (Funded by yield)</td>
-              </tr>
-              <tr>
-                <td className="py-3 pr-4 font-sans font-semibold text-slate-900 dark:text-white">Capital Recoverability</td>
-                <td className="py-3 px-4 text-slate-500">0% (Sunk cost)</td>
-                <td className="py-3 pl-4 text-emerald-600 dark:text-[#00e599] font-bold">100% Principal Returned</td>
-              </tr>
-              <tr>
-                <td className="py-3 pr-4 font-sans font-semibold text-slate-900 dark:text-white">Underlying Asset Custody</td>
-                <td className="py-3 px-4 text-slate-500">Corporate merchant processor</td>
-                <td className="py-3 pl-4 text-slate-800 dark:text-slate-200">Non-custodial smart contract timelock</td>
-              </tr>
-              <tr>
-                <td className="py-3 pr-4 font-sans font-semibold text-slate-900 dark:text-white">Net Balance at 1 Year</td>
-                <td className="py-3 px-4 text-red-600 dark:text-red-400 font-bold">-$180.00</td>
-                <td className="py-3 pl-4 text-emerald-600 dark:text-[#00e599] font-bold">+$1,200.00 Principal + $0 Lost</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
