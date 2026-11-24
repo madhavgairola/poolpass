@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  Terminal,
   Play,
   Pause,
   FastForward,
@@ -10,7 +11,7 @@ import {
   Plus,
   Check,
   ArrowRight,
-  Zap,
+  Shield,
 } from 'lucide-react';
 import { ethers } from 'ethers';
 import { evmIncreaseTime, triggerFaucet, DEMO_ACCOUNTS, formatToken } from '../utils/web3';
@@ -60,10 +61,9 @@ export default function SimulationDrawer({
           const freshAccrued = await poolPassContract.getAccruedYield(userAddress);
           const freshAccruedFloat = parseFloat(ethers.formatEther(freshAccrued));
           if (freshAccruedFloat >= 1.0) {
-            setFeedback(`Auto-Harvesting ${freshAccruedFloat.toFixed(2)} mUSDC to Provider Treasury...`);
+            setFeedback(`Auto-Harvested ${freshAccruedFloat.toFixed(2)} mUSDC to Provider Treasury`);
             const tx = await poolPassContract.settleYield(userAddress);
             await tx.wait();
-            setFeedback(`✓ Harvested ${freshAccruedFloat.toFixed(2)} mUSDC to Treasury for cycle payment.`);
             if (onActionSuccess) await onActionSuccess();
           }
         } catch (e) {
@@ -152,227 +152,219 @@ export default function SimulationDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Slide-out Drawer */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between">
+        <div className="w-screen max-w-md bg-white dark:bg-[#111215] border-l border-slate-200 dark:border-[#22242a] shadow-2xl flex flex-col justify-between">
           
           {/* Header */}
-          <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-200 dark:border-[#202227] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                ⚡
+              <div className="w-7 h-7 rounded-md bg-slate-100 dark:bg-[#1a1c22] text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-[#2a2d36]">
+                <Terminal className="w-3.5 h-3.5" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  Simulation & Dev Sandbox
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Time-travel controls for evaluation & testing
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                    Dev Sandbox
+                  </h3>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#1a1c22] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#2a2d36]">
+                    Chain 31337
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  State simulator & time-travel engine
                 </p>
               </div>
             </div>
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#1a1c22] transition cursor-pointer"
+              aria-label="Close Sandbox"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Drawer Body */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             
-            {/* Telemetry Status Bar */}
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-emerald-500" />
-                  Simulated Time:
-                </span>
-                <span className="text-slate-900 dark:text-white font-medium">{formattedDate}</span>
+            {/* Status Strip */}
+            <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-200 dark:border-[#23252c] text-xs">
+              <div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-0.5 font-medium">
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  <span>Simulated Time</span>
+                </div>
+                <div className="font-mono text-slate-800 dark:text-slate-200 text-xs truncate">
+                  {formattedDate}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Cuboid className="w-3.5 h-3.5 text-emerald-500" />
-                  Block Height:
-                </span>
-                <span className="text-slate-900 dark:text-white font-medium">#{blockNumber ?? '...'}</span>
+              <div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-0.5 font-medium">
+                  <Cuboid className="w-3 h-3 text-slate-400" />
+                  <span>Block Height</span>
+                </div>
+                <div className="font-mono text-slate-800 dark:text-slate-200 text-xs font-semibold">
+                  #{blockNumber ?? '—'}
+                </div>
               </div>
             </div>
 
-            {/* Interactive Playback Engine */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-3.5">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-2.5 w-2.5 relative">
-                      {isPlaying && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      )}
-                      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPlaying ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                    </span>
-                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                      Interactive Playback Engine
-                    </h4>
-                  </div>
-                  {simulatedWeeksCount > 0 && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                      +{simulatedWeeksCount} Wks
-                    </span>
-                  )}
+            {/* Continuous Playback Engine */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#16171b] border border-slate-200 dark:border-[#23252c] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 relative">
+                    {isPlaying && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isPlaying ? 'bg-emerald-500' : 'bg-slate-400 dark:bg-slate-600'}`}></span>
+                  </span>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-200">
+                    Continuous Playback
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Run continuous time-travel to watch yield streaming, milestone payment triggers, and automated settlement receipts in real-time.
-                </p>
+                {simulatedWeeksCount > 0 && (
+                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                    +{simulatedWeeksCount} wks elapsed
+                  </span>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-2.5">
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className={`w-full py-2.5 px-4 rounded-xl font-mono text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
-                    isPlaying
-                      ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
-                      : 'bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00e599] dark:hover:bg-[#00c985] text-white dark:text-[#090a0d]'
-                  }`}
-                >
-                  {isPlaying ? (
-                    <>
-                      <Pause className="w-4 h-4 fill-current" />
-                      <span>Pause Time Simulation</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-current" />
-                      <span>Play Simulation (+1 Wk / {simSpeedMs / 1000}s)</span>
-                    </>
-                  )}
-                </button>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Advance Hardhat blocks on an automated interval to observe live yield streaming and settlement receipts.
+              </p>
 
-                <div className="grid grid-cols-2 gap-2">
+              {/* Controls */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  {/* Play / Pause Toggle Button */}
+                  <button
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className={`flex-1 py-2 px-3.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                      isPlaying
+                        ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                        : 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white'
+                    }`}
+                  >
+                    {isPlaying ? (
+                      <>
+                        <Pause className="w-3.5 h-3.5 fill-current" />
+                        <span>Pause Simulation</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Play (+1 wk / {simSpeedMs / 1000}s)</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Quick Steppers */}
                   <button
                     onClick={() => stepTime(7 * 86400, '+1 Week')}
                     disabled={isPlaying || loading}
-                    className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    className="py-2 px-3 rounded-lg bg-white dark:bg-[#1e2025] hover:bg-slate-100 dark:hover:bg-[#252830] text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-[#2e3138] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer"
                     title="Step forward 1 week (7 days)"
                   >
-                    <FastForward className="w-3.5 h-3.5" />
-                    <span>+1 Week</span>
+                    <FastForward className="w-3 h-3 text-slate-400" />
+                    <span>+1W</span>
                   </button>
 
                   <button
                     onClick={() => stepTime(30 * 86400, '+1 Month')}
                     disabled={isPlaying || loading}
-                    className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    className="py-2 px-3 rounded-lg bg-white dark:bg-[#1e2025] hover:bg-slate-100 dark:hover:bg-[#252830] text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200 dark:border-[#2e3138] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer"
                     title="Step forward 1 month (30 days)"
                   >
-                    <FastForward className="w-3.5 h-3.5" />
-                    <span>+1 Month</span>
+                    <FastForward className="w-3 h-3 text-slate-400" />
+                    <span>+1M</span>
                   </button>
                 </div>
 
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-100/60 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono cursor-pointer select-none">
+                {/* Auto-Settle Policy Checkbox */}
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-[#111215] border border-slate-200 dark:border-[#23252c] text-xs text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={autoSettle}
                     onChange={(e) => setAutoSettle(e.target.checked)}
                     className="w-3.5 h-3.5 text-emerald-600 rounded focus:ring-0 cursor-pointer"
                   />
-                  <span className="text-slate-700 dark:text-slate-300">Auto-Harvest Milestones</span>
+                  <span>Auto-harvest yield at milestone thresholds</span>
                 </label>
               </div>
             </div>
 
-            {/* Time Travel Controls (Jump Ahead) */}
-            <div className="space-y-3">
+            {/* Fast-Forward Clock */}
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-sans">
-                  Quick Jump Ahead
-                </label>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-200">
+                  Fast-Forward Clock
+                </span>
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                   evm_increaseTime
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => handleTimeTravel(1, '+1 Day')}
-                  disabled={loading || isPlaying}
-                  className="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-mono font-medium transition cursor-pointer disabled:opacity-50"
-                >
-                  +1 Day
-                </button>
-                <button
-                  onClick={() => handleTimeTravel(7, '+7 Days')}
-                  disabled={loading || isPlaying}
-                  className="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-mono font-medium transition cursor-pointer disabled:opacity-50"
-                >
-                  +7 Days
-                </button>
-                <button
-                  onClick={() => handleTimeTravel(30, '+30 Days (1 Month)')}
-                  disabled={loading || isPlaying}
-                  className="py-2 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-mono font-medium transition cursor-pointer disabled:opacity-50"
-                >
-                  +30 Days
-                </button>
-                <button
-                  onClick={() => handleTimeTravel(90, '+90 Days')}
-                  disabled={loading || isPlaying}
-                  className="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-mono font-medium transition cursor-pointer disabled:opacity-50"
-                >
-                  +90 Days
-                </button>
-                <button
-                  onClick={() => handleTimeTravel(180, '+180 Days')}
-                  disabled={loading || isPlaying}
-                  className="py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-mono font-medium transition cursor-pointer disabled:opacity-50"
-                >
-                  +180 Days
-                </button>
-                <button
-                  onClick={() => handleTimeTravel(365, '+365 Days (1 Year)')}
-                  disabled={loading || isPlaying}
-                  className="py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 text-xs font-mono font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
-                >
-                  +365 Days
-                </button>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { days: 1, label: '+1 Day' },
+                  { days: 7, label: '+7 Days' },
+                  { days: 30, label: '+30 Days' },
+                  { days: 90, label: '+90 Days' },
+                  { days: 180, label: '+180 Days' },
+                  { days: 365, label: '+365 Days' },
+                ].map(({ days, label }) => (
+                  <button
+                    key={days}
+                    onClick={() => handleTimeTravel(days, label)}
+                    disabled={loading || isPlaying}
+                    className="py-1.5 px-2 rounded-lg bg-slate-50 dark:bg-[#1a1c21] hover:bg-slate-100 dark:hover:bg-[#22242b] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#282a32] text-xs font-mono transition cursor-pointer disabled:opacity-40"
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
               {/* Custom Days Input */}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="number"
-                  value={customDays}
-                  onChange={(e) => setCustomDays(e.target.value)}
-                  placeholder="Days"
-                  min="1"
-                  max="1000"
-                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 w-24 focus:outline-none focus:border-emerald-500"
-                />
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    placeholder="Days"
+                    min="1"
+                    max="1000"
+                    className="w-full bg-slate-50 dark:bg-[#1a1c21] border border-slate-200 dark:border-[#282a32] rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono">
+                    days
+                  </span>
+                </div>
                 <button
                   onClick={() => handleTimeTravel(customDays, `+${customDays} Days`)}
                   disabled={loading || isPlaying || !customDays}
-                  className="flex-1 py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-medium transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-[#22242b] dark:hover:bg-[#2b2d36] text-white dark:text-slate-200 text-xs font-medium transition cursor-pointer disabled:opacity-40 flex items-center gap-1 border border-transparent dark:border-[#323540]"
                 >
-                  <span>Advance Custom Days</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>Advance</span>
+                  <ArrowRight className="w-3 h-3 text-slate-400" />
                 </button>
               </div>
             </div>
 
             {/* Test Wallet Switcher */}
-            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-              <label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-sans">
-                Select Active Test Wallet
-              </label>
+            <div className="space-y-2.5 pt-3 border-t border-slate-200 dark:border-[#202227]">
+              <span className="text-xs font-semibold text-slate-900 dark:text-slate-200">
+                Active Test Account
+              </span>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {DEMO_ACCOUNTS.map((acc, idx) => {
                   const isSelected = currentAccountIndex === idx;
 
@@ -383,23 +375,26 @@ export default function SimulationDrawer({
                         setCurrentAccountIndex(idx);
                         if (onActionSuccess) onActionSuccess();
                       }}
-                      className={`w-full p-2.5 rounded-xl text-left border transition cursor-pointer flex items-center justify-between text-xs ${
+                      className={`w-full p-2.5 rounded-lg text-left border transition cursor-pointer flex items-center justify-between text-xs ${
                         isSelected
-                          ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 dark:border-slate-700 text-white'
-                          : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                          ? 'bg-slate-100 dark:bg-[#202228] border-slate-300 dark:border-[#363944] text-slate-900 dark:text-slate-100 shadow-sm'
+                          : 'bg-slate-50 dark:bg-[#16171b] border-slate-200 dark:border-[#22242a] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-[#2d3038]'
                       }`}
                     >
-                      <div>
-                        <div className="font-bold flex items-center gap-1.5">
-                          <span>{acc.name}</span>
-                          <span className="text-[10px] font-mono opacity-60 uppercase">({acc.role})</span>
-                        </div>
-                        <div className="font-mono text-[11px] opacity-75 mt-0.5">
-                          {acc.address.slice(0, 8)}...{acc.address.slice(-6)}
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-slate-400 dark:bg-slate-600'}`} />
+                        <div>
+                          <div className="font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <span>{acc.name}</span>
+                            <span className="text-[10px] text-slate-500 font-normal">({acc.role})</span>
+                          </div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                            {acc.address.slice(0, 8)}...{acc.address.slice(-6)}
+                          </div>
                         </div>
                       </div>
 
-                      {isSelected && <Check className="w-4 h-4 text-emerald-400" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                     </button>
                   );
                 })}
@@ -407,50 +402,53 @@ export default function SimulationDrawer({
             </div>
 
             {/* Mint Faucet Tool */}
-            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-sans">
-                  Mint Mock mUSDC
-                </label>
-                <span className="text-xs font-mono text-slate-500">
-                  Bal: {formatToken(tokenBalance)}
+            <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-[#202227]">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-900 dark:text-slate-200">Test Token Faucet</span>
+                <span className="font-mono text-slate-500 dark:text-slate-400">
+                  Balance: <span className="text-slate-900 dark:text-slate-200 font-medium">{formatToken(tokenBalance)}</span> mUSDC
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={faucetAmount}
-                  onChange={(e) => setFaucetAmount(e.target.value)}
-                  placeholder="Amount"
-                  min="100"
-                  step="500"
-                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 w-28 focus:outline-none focus:border-emerald-500"
-                />
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    value={faucetAmount}
+                    onChange={(e) => setFaucetAmount(e.target.value)}
+                    placeholder="Amount"
+                    min="100"
+                    step="500"
+                    className="w-full bg-slate-50 dark:bg-[#1a1c21] border border-slate-200 dark:border-[#282a32] rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono">
+                    mUSDC
+                  </span>
+                </div>
                 <button
                   onClick={handleMintFaucet}
                   disabled={loading || !faucetAmount}
-                  className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-slate-950 text-xs font-bold font-mono transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium transition cursor-pointer disabled:opacity-40 flex items-center gap-1.5 shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Mint to Active Wallet</span>
+                  <span>Mint Tokens</span>
                 </button>
               </div>
             </div>
 
             {/* Feedback notification */}
             {feedback && (
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-950 border border-emerald-500/40 text-xs font-mono text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-[#1c1d22] border border-slate-200 dark:border-[#2e313b] text-xs font-mono text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 <span>{feedback}</span>
               </div>
             )}
           </div>
 
           {/* Drawer Footer */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 text-center">
-            <span className="text-[11px] font-mono text-slate-400">
-              Hardhat Node Localhost:8545 (Chain 31337)
+          <div className="p-3 border-t border-slate-200 dark:border-[#202227] text-center">
+            <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+              Hardhat Node Localhost:8545 · Chain ID: 31337
             </span>
           </div>
         </div>

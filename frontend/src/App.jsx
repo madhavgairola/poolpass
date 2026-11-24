@@ -306,11 +306,11 @@ export default function App() {
       {/* Floating Simulation Engine Pop-up Button */}
       <button
         onClick={() => setIsSimulationOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900/95 dark:bg-slate-800/95 hover:bg-slate-900 dark:hover:bg-slate-700 text-white border border-slate-700/60 shadow-2xl backdrop-blur-md text-xs font-mono transition cursor-pointer hover:scale-105 active:scale-95"
-        title="Open Simulation & Playback Engine"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900 dark:bg-[#18191e] hover:bg-slate-800 dark:hover:bg-[#22242b] text-white border border-slate-700/60 dark:border-[#2f323c] shadow-2xl backdrop-blur-md text-xs transition cursor-pointer hover:scale-105 active:scale-95"
+        title="Open Dev Sandbox"
       >
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span className="font-sans font-semibold">Dev Sandbox</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        <span className="font-medium">Dev Sandbox</span>
         <Terminal className="w-3.5 h-3.5 text-slate-400" />
       </button>
 
