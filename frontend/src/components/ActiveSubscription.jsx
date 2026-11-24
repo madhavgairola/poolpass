@@ -1,16 +1,43 @@
-import React, { useState } from 'react';
-import { ArrowDownToLine, TrendingUp, Loader2, CheckCircle2 } from 'lucide-react';
-import { formatToken, formatTimeRemaining } from '../utils/web3';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Play,
+  Pause,
+  FastForward,
+  RotateCcw,
+  TrendingUp,
+  ArrowDownToLine,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  Calendar,
+  ShieldCheck,
+  Loader2,
+  ExternalLink,
+  ChevronRight,
+  Zap,
+} from 'lucide-react';
+import { formatToken, formatTimeRemaining, formatTimestamp, evmIncreaseTime, fetchUserActivity } from '../utils/web3';
 import { ethers } from 'ethers';
 
 export default function ActiveSubscription({
   subscription,
   poolPassContract,
   userAddress,
+  blockTimestamp,
   onActionSuccess,
 }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [simSpeedMs, setSimSpeedMs] = useState(2000); // 2000ms = 1 week
+  const [simulatedWeeksCount, setSimulatedWeeksCount] = useState(0);
+  const [autoSettle, setAutoSettle] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
+  const [activityHistory, setActivityHistory] = useState([]);
+  const [streamTick, setStreamTick] = useState(0);
+
+  // Playback timer ref
+  const playIntervalRef = useRef(null);
+  const isExecutingRef = useRef(false);
 
   if (!subscription || !subscription.stakedPrincipal || subscription.stakedPrincipal === 0n || subscription.isWithdrawn) {
     return null;
@@ -31,19 +58,152 @@ export default function ActiveSubscription({
 
   const isMatured = Number(timeRemaining || 0n) === 0;
 
-  // Calculate yield coverage percentage safely
-  let coveragePercent = 0;
-  try {
-    const settledFloat = parseFloat(ethers.formatEther(yieldSettled || 0n));
-    const accruedFloat = parseFloat(ethers.formatEther(currentAccruedYield || 0n));
-    const targetFloat = parseFloat(ethers.formatEther(targetFeeTotal || 0n));
-    if (targetFloat > 0) {
-      coveragePercent = Math.min(100, Math.round(((settledFloat + accruedFloat) / targetFloat) * 100));
+  // Load user on-chain events
+  useEffect(() => {
+    async function loadActivity() {
+      if (!poolPassContract || !userAddress) return;
+      try {
+        const events = await fetchUserActivity(poolPassContract, userAddress);
+        setActivityHistory(events);
+      } catch (err) {
+        console.error("Error fetching activity:", err);
+      }
     }
-  } catch (e) {
-    coveragePercent = 0;
+    loadActivity();
+  }, [poolPassContract, userAddress, yieldSettled, streamTick]);
+
+  // Micro-streaming counter effect for realistic live decimal movement
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStreamTick((prev) => prev + 1);
+    }, 150);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Compute total duration and cycle milestones
+  const startSec = Number(startTime || 0n);
+  const expirySec = Number(lockExpiry || 0n);
+  const currentSec = Number(blockTimestamp || Math.floor(Date.now() / 1000));
+  const totalDurationSec = Math.max(1, expirySec - startSec);
+
+  // Standard cycle: 30 days = 2,592,000s
+  const cycleSeconds = 30 * 86400;
+  const totalCycles = Math.max(1, Math.round(totalDurationSec / cycleSeconds));
+
+  const monthlyFeeFloat = parseFloat(ethers.formatEther(monthlyFee || 0n));
+  const targetFeeFloat = parseFloat(ethers.formatEther(targetFeeTotal || 0n));
+  const yieldSettledFloat = parseFloat(ethers.formatEther(yieldSettled || 0n));
+  const accruedFloat = parseFloat(ethers.formatEther(currentAccruedYield || 0n));
+
+  // Milestone breakdown
+  const cycleFeeFloat = totalCycles > 0 ? targetFeeFloat / totalCycles : monthlyFeeFloat;
+  let activeUnpaidIndex = -1;
+  const cycles = [];
+
+  for (let i = 0; i < totalCycles; i++) {
+    const cycleDueSec = startSec + Math.round(((i + 1) * totalDurationSec) / totalCycles);
+    const cumulativeDue = (i + 1) * cycleFeeFloat;
+    const isPastDue = currentSec >= cycleDueSec;
+    const isFullyPaid = yieldSettledFloat >= cumulativeDue - 0.1;
+
+    if (!isFullyPaid && activeUnpaidIndex === -1) {
+      activeUnpaidIndex = i;
+    }
+
+    cycles.push({
+      cycleNumber: i + 1,
+      dueTimestamp: cycleDueSec,
+      amountDue: cycleFeeFloat,
+      cumulativeDue,
+      isFullyPaid,
+      isPastDue,
+    });
   }
 
+  // If all are paid, activeUnpaidIndex is totalCycles - 1
+  if (activeUnpaidIndex === -1) {
+    activeUnpaidIndex = totalCycles - 1;
+  }
+
+  // Assign isCurrent
+  cycles.forEach((c, idx) => {
+    c.isCurrent = idx === activeUnpaidIndex && !c.isFullyPaid;
+  });
+
+  // Next due payment info
+  const nextUnpaidCycle = cycles.find((c) => !c.isFullyPaid) || cycles[cycles.length - 1];
+  const nextDueAmount = nextUnpaidCycle ? nextUnpaidCycle.amountDue : cycleFeeFloat;
+
+  // Calculate funded progress for the active cycle
+  const priorSettled = activeUnpaidIndex > 0 ? activeUnpaidIndex * cycleFeeFloat : 0;
+  const settledInActiveCycle = Math.max(0, yieldSettledFloat - priorSettled);
+  const activeCycleFunded = Math.min(nextDueAmount, settledInActiveCycle + accruedFloat);
+  const currentAccruedProgress = nextDueAmount > 0
+    ? Math.min(100, Math.round((activeCycleFunded / nextDueAmount) * 100))
+    : 100;
+
+  // Total yield coverage percentage
+  let coveragePercent = 0;
+  if (targetFeeFloat > 0) {
+    coveragePercent = Math.min(100, Math.round(((yieldSettledFloat + accruedFloat) / targetFeeFloat) * 100));
+  }
+
+  // Execute Step Forward (1 Week = 7 days)
+  const stepTime = async (secondsToAdd = 7 * 86400, label = '1 week') => {
+    if (isExecutingRef.current) return;
+    try {
+      isExecutingRef.current = true;
+      await evmIncreaseTime(secondsToAdd);
+      setSimulatedWeeksCount((prev) => prev + Math.round(secondsToAdd / (7 * 86400)));
+
+      if (onActionSuccess) {
+        await onActionSuccess();
+      }
+
+      // Check if auto-settle should trigger
+      if (autoSettle && poolPassContract) {
+        // Query latest accrued yield directly
+        const freshAccrued = await poolPassContract.getAccruedYield(userAddress);
+        const freshAccruedFloat = parseFloat(ethers.formatEther(freshAccrued));
+
+        // If accrued enough to pay at least half a month or full cycle fee
+        if (freshAccruedFloat >= 1.0) {
+          setActionMessage(`Auto-Settlement: Harvesting ${freshAccruedFloat.toFixed(2)} mUSDC to Provider Treasury...`);
+          const tx = await poolPassContract.settleYield(userAddress);
+          await tx.wait();
+          setActionMessage(`✓ Auto-Settled: ${freshAccruedFloat.toFixed(2)} mUSDC routed to Treasury for cycle payment.`);
+          if (onActionSuccess) await onActionSuccess();
+          setTimeout(() => setActionMessage(''), 4000);
+        }
+      }
+    } catch (err) {
+      console.error("Simulation step error:", err);
+    } finally {
+      isExecutingRef.current = false;
+    }
+  };
+
+  // Playback Interval Controller
+  useEffect(() => {
+    if (isPlaying) {
+      playIntervalRef.current = setInterval(() => {
+        stepTime(7 * 86400, '1 week');
+      }, simSpeedMs);
+    } else {
+      if (playIntervalRef.current) {
+        clearInterval(playIntervalRef.current);
+        playIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (playIntervalRef.current) {
+        clearInterval(playIntervalRef.current);
+      }
+    };
+  }, [isPlaying, simSpeedMs, autoSettle, poolPassContract, userAddress]);
+
+  // Manual Settle Handler
   const handleSettle = async () => {
     if (!poolPassContract) return;
     try {
@@ -53,7 +213,7 @@ export default function ActiveSubscription({
       await tx.wait();
       setActionMessage('Yield successfully settled to Provider Treasury.');
       if (onActionSuccess) await onActionSuccess();
-      setTimeout(() => setActionMessage(''), 3500);
+      setTimeout(() => setActionMessage(''), 4000);
     } catch (err) {
       console.error(err);
       setActionMessage(`Settlement failed: ${err.reason || err.message}`);
@@ -63,6 +223,7 @@ export default function ActiveSubscription({
     }
   };
 
+  // Manual Withdraw Handler
   const handleWithdraw = async () => {
     if (!poolPassContract) return;
     try {
@@ -87,109 +248,362 @@ export default function ActiveSubscription({
   };
 
   return (
-    <div className="surface-panel rounded-2xl p-6 sm:p-7 border border-slate-200 dark:border-[#232938] shadow-sm">
-      {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-[#1f2430]">
-        <div>
-          <div className="flex items-center gap-3">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white font-sans">{planName || 'Active Yield Pass'}</h3>
-            <span
-              className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${
-                isMatured
-                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-400/30'
-                  : 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e599] border border-emerald-500/20'
+    <div className="space-y-6">
+      {/* 1. Interactive Fast-Forward Simulation Controller */}
+      <div className="surface-panel rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm bg-gradient-to-r from-emerald-500/5 via-transparent to-slate-500/5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-2.5 w-2.5 relative">
+                {isPlaying && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPlaying ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+              </span>
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                {isPlaying ? 'Live Time-Travel Engine • Fast-Forward Active' : 'Interactive Playback Engine'}
+              </h3>
+              {simulatedWeeksCount > 0 && (
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                  +{simulatedWeeksCount} Weeks Simulated
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Run continuous time-travel to watch yield streaming, milestone payment triggers, and automated settlement receipts in real-time.
+            </p>
+          </div>
+
+          {/* Controls Cluster */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Play / Pause Toggle Button */}
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 shadow-sm cursor-pointer ${
+                isPlaying
+                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00e599] dark:hover:bg-[#00c985] text-white dark:text-[#090a0d]'
               }`}
             >
-              {isMatured ? 'MATURED (UNLOCKED)' : 'ACTIVE POSITION'}
-            </span>
-          </div>
-          <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1">
-            Maturity Status: <span className="text-slate-900 dark:text-white font-medium">{formatTimeRemaining(timeRemaining)}</span>
-          </div>
-        </div>
+              {isPlaying ? (
+                <>
+                  <Pause className="w-4 h-4 fill-current" />
+                  <span>Pause Time</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>Play Simulation (+1 Wk / {simSpeedMs / 1000}s)</span>
+                </>
+              )}
+            </button>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleSettle}
-            disabled={loadingAction || currentAccruedYield === 0n}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#161922] dark:hover:bg-[#202534] text-xs font-mono text-emerald-700 dark:text-[#00e599] border border-emerald-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 font-medium"
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            Settle Yield ({formatToken(currentAccruedYield, 2)} mUSDC)
-          </button>
+            {/* Manual Step Forward Buttons */}
+            <button
+              onClick={() => stepTime(7 * 86400, '1 week')}
+              disabled={isPlaying}
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+              title="Step forward 1 week (7 days)"
+            >
+              <FastForward className="w-3.5 h-3.5" />
+              <span>+1 Week</span>
+            </button>
 
-          <button
-            onClick={handleWithdraw}
-            disabled={loadingAction || !isMatured}
-            className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 ${
-              isMatured
-                ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00e599] dark:hover:bg-[#00c985] text-white dark:text-[#090a0d] shadow-sm'
-                : 'bg-slate-100 dark:bg-[#14161f] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-[#202532] cursor-not-allowed'
-            }`}
-            title={!isMatured ? "Locked until maturity countdown reaches zero" : "Recover 100% of your initial stake"}
-          >
-            <ArrowDownToLine className="w-3.5 h-3.5" />
-            Withdraw Principal ({formatToken(stakedPrincipal, 0)} mUSDC)
-          </button>
+            <button
+              onClick={() => stepTime(30 * 86400, '1 month')}
+              disabled={isPlaying}
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+              title="Step forward 1 month (30 days)"
+            >
+              <FastForward className="w-3.5 h-3.5" />
+              <span>+1 Month</span>
+            </button>
+
+            {/* Auto-Settle Policy Toggle */}
+            <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoSettle}
+                onChange={(e) => setAutoSettle(e.target.checked)}
+                className="w-3.5 h-3.5 text-emerald-600 rounded focus:ring-0 cursor-pointer"
+              />
+              <span className="text-slate-700 dark:text-slate-300">Auto-Harvest Milestones</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      {/* Position Metrics Ledger */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-5">
-        <div className="bg-slate-50 dark:bg-[#0b0c10] p-4 rounded-xl border border-slate-200 dark:border-[#1b1f2b]">
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Locked Principal</div>
-          <div className="text-lg font-bold font-mono text-slate-900 dark:text-white mt-1">
-            {formatToken(stakedPrincipal)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+      {/* 2. Main Subscription Status & Metrics Card */}
+      <div className="surface-panel rounded-2xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-sm">
+        {/* Header bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white font-sans">{planName || 'Active Yield Pass'}</h3>
+              <span
+                className={`px-2.5 py-0.5 rounded text-xs font-mono font-bold ${
+                  isMatured
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-400/30'
+                    : 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e599] border border-emerald-500/20'
+                }`}
+              >
+                {isMatured ? 'LOCK MATURED (UNLOCKED)' : 'ACTIVE POSITION'}
+              </span>
+            </div>
+            <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1">
+              Lock Maturity Status: <span className="text-slate-900 dark:text-white font-medium">{formatTimeRemaining(timeRemaining)}</span>
+              <span className="mx-2">•</span>
+              Expires: <span className="text-slate-700 dark:text-slate-300">{formatTimestamp(lockExpiry)}</span>
+            </div>
           </div>
-          <div className="text-[10px] font-mono text-emerald-600 dark:text-[#00e599] mt-0.5 font-medium">100% Returnable</div>
+
+          {/* Action Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleSettle}
+              disabled={loadingAction || currentAccruedYield === 0n}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-emerald-700 dark:text-[#00e599] border border-emerald-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 font-medium cursor-pointer"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Settle Yield ({formatToken(currentAccruedYield, 2)} mUSDC)
+            </button>
+
+            <button
+              onClick={handleWithdraw}
+              disabled={loadingAction || !isMatured}
+              className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                isMatured
+                  ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00e599] dark:hover:bg-[#00c985] text-white dark:text-[#090a0d] shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-800 cursor-not-allowed'
+              }`}
+              title={!isMatured ? "Locked until maturity countdown reaches zero" : "Recover 100% of your initial stake"}
+            >
+              <ArrowDownToLine className="w-3.5 h-3.5" />
+              Withdraw Principal ({formatToken(stakedPrincipal, 0)} mUSDC)
+            </button>
+          </div>
         </div>
 
-        <div className="bg-slate-50 dark:bg-[#0b0c10] p-4 rounded-xl border border-slate-200 dark:border-[#1b1f2b]">
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Accrued Interest</div>
-          <div className="text-lg font-bold font-mono text-emerald-600 dark:text-[#00e599] mt-1">
-            +{formatToken(currentAccruedYield, 3)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+        {/* Position Metrics Ledger */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-5">
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Locked Principal</div>
+            <div className="text-lg font-bold font-mono text-slate-900 dark:text-white mt-1">
+              {formatToken(stakedPrincipal)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+            </div>
+            <div className="text-[10px] font-mono text-emerald-600 dark:text-[#00e599] mt-0.5 font-medium">100% Refundable at Lock Expiry</div>
           </div>
-          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Earning in Mock Pool</div>
+
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
+              <span>Accrued Yield</span>
+              <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                <Zap className="w-3 h-3 fill-current animate-pulse" />
+                Streaming
+              </span>
+            </div>
+            <div className="text-lg font-bold font-mono text-emerald-600 dark:text-[#00e599] mt-1">
+              +{formatToken(currentAccruedYield, 3)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+            </div>
+            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Earning in Aave Mock Pool</div>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Yield Settled to Treasury</div>
+            <div className="text-lg font-bold font-mono text-slate-900 dark:text-slate-200 mt-1">
+              {formatToken(yieldSettled, 2)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+            </div>
+            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Paid to Service Provider</div>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Cycle Target Fee</div>
+            <div className="text-lg font-bold font-mono text-slate-900 dark:text-slate-200 mt-1">
+              {formatToken(targetFeeTotal, 2)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+            </div>
+            <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">{coveragePercent}% Target Funded</div>
+          </div>
         </div>
 
-        <div className="bg-slate-50 dark:bg-[#0b0c10] p-4 rounded-xl border border-slate-200 dark:border-[#1b1f2b]">
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Yield Settled to Treasury</div>
-          <div className="text-lg font-bold font-mono text-slate-900 dark:text-slate-200 mt-1">
-            {formatToken(yieldSettled, 2)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+        {/* Next Scheduled Payment Milestone Banner */}
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00e599]" />
+              <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                Next Billing Milestone: Cycle #{nextUnpaidCycle ? nextUnpaidCycle.cycleNumber : totalCycles}
+              </span>
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                Due: {nextUnpaidCycle ? formatTimestamp(nextUnpaidCycle.dueTimestamp) : 'Completed'}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Target payment: <strong className="text-slate-900 dark:text-white font-mono">${nextDueAmount.toFixed(2)} mUSDC</strong> (Settled from generated yield)
+            </div>
           </div>
-          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Paid to Service Provider</div>
+
+          {/* Progress towards this cycle */}
+          <div className="w-full md:w-64 space-y-1.5">
+            <div className="flex justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
+              <span>Cycle Funding:</span>
+              <span className="text-emerald-600 dark:text-[#00e599] font-bold">
+                {currentAccruedProgress}% (${accruedFloat.toFixed(2)} / ${nextDueAmount.toFixed(2)})
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 dark:bg-[#00e599] transition-all duration-300 rounded-full"
+                style={{ width: `${currentAccruedProgress}%` }}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="bg-slate-50 dark:bg-[#0b0c10] p-4 rounded-xl border border-slate-200 dark:border-[#1b1f2b]">
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">Cycle Target Fee</div>
-          <div className="text-lg font-bold font-mono text-slate-900 dark:text-slate-200 mt-1">
-            {formatToken(targetFeeTotal, 2)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">mUSDC</span>
+        {/* Global Yield Coverage Meter */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+            <span>Overall Subscription Fee Coverage:</span>
+            <span className="text-emerald-600 dark:text-[#00e599] font-bold">{coveragePercent}%</span>
           </div>
-          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">{coveragePercent}% Yield Covered</div>
+          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div
+              className="h-full bg-emerald-500 dark:bg-[#00e599] transition-all duration-300 rounded-full"
+              style={{ width: `${coveragePercent}%` }}
+            />
+          </div>
+        </div>
+
+        {actionMessage && (
+          <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-emerald-500/30 text-xs font-mono text-emerald-700 dark:text-[#00e599] flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+            <span>{actionMessage}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Scheduled Payment Cycles & Billing Milestones */}
+      <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white font-sans uppercase tracking-wider">
+              Automated Billing Schedule & Settlement Milestones
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Every cycle fee is harvested directly from protocol lending yield without touching your principal.
+            </p>
+          </div>
+          <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
+            Cadence: <span className="text-slate-800 dark:text-slate-200 font-bold">Monthly (Every 30 Days)</span>
+          </div>
+        </div>
+
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/60 mt-2">
+          {cycles.map((c) => (
+            <div key={c.cycleNumber} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono text-xs font-bold ${
+                    c.isFullyPaid
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-[#00e599] border border-emerald-500/20'
+                      : c.isCurrent
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 animate-pulse'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  0{c.cycleNumber}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white font-sans">
+                    Cycle #{c.cycleNumber} Settlement Due
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                    Scheduled Date: {formatTimestamp(c.dueTimestamp)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                    ${c.amountDue.toFixed(2)} mUSDC
+                  </div>
+                  <div className="text-[10px] font-mono text-emerald-600 dark:text-[#00e599]">
+                    100% Yield Funded
+                  </div>
+                </div>
+
+                <div className="w-32 text-right">
+                  {c.isFullyPaid ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-[#00e599] border border-emerald-500/20">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Paid via Yield
+                    </span>
+                  ) : c.isCurrent ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
+                      <Clock className="w-3 h-3" />
+                      Accruing ({currentAccruedProgress}%)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">
+                      Scheduled
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Yield Meter */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
-          <span>Fee Funding Coverage:</span>
-          <span className="text-emerald-600 dark:text-[#00e599] font-bold">{coveragePercent}%</span>
+      {/* 4. On-Chain Activity Feed (Receipts) */}
+      <div className="surface-panel rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white font-sans uppercase tracking-wider">
+              On-Chain Activity & Settlement Receipts
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Cryptographically verified billing logs recorded directly on the local blockchain.
+            </p>
+          </div>
+          <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+            {activityHistory.length} Event{activityHistory.length === 1 ? '' : 's'} Logged
+          </span>
         </div>
-        <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0b0c10] overflow-hidden border border-slate-200 dark:border-[#1b1f2b]">
-          <div
-            className="h-full bg-emerald-500 dark:bg-[#00e599] transition-all duration-300 rounded-full"
-            style={{ width: `${coveragePercent}%` }}
-          />
-        </div>
-      </div>
 
-      {actionMessage && (
-        <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-[#0b0c10] border border-emerald-500/30 text-xs font-mono text-emerald-700 dark:text-[#00e599] flex items-center gap-2">
-          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-          <span>{actionMessage}</span>
-        </div>
-      )}
+        {activityHistory.length === 0 ? (
+          <div className="text-center py-6 text-xs font-mono text-slate-400 dark:text-slate-500">
+            No on-chain events yet. Start the playback simulation or trigger settlement to generate verifiable receipts.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60 mt-2">
+            {activityHistory.map((act, idx) => (
+              <div key={idx} className="py-3 flex items-center justify-between text-xs font-mono">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-2 h-2 rounded-full ${
+                    act.type === 'YIELD_SETTLEMENT' ? 'bg-emerald-500' : 'bg-blue-500'
+                  }`} />
+                  <div>
+                    <div className="text-slate-900 dark:text-white font-bold">{act.title}</div>
+                    <div className="text-[10px] text-slate-400">
+                      Tx: {act.txHash ? `${act.txHash.slice(0, 10)}...${act.txHash.slice(-8)}` : 'Local Call'} • {formatTimestamp(act.timestamp)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="font-bold text-emerald-600 dark:text-[#00e599]">
+                    {formatToken(act.amount, 2)} mUSDC
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Status: Confirmed
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

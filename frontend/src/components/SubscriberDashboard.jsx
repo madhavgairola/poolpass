@@ -6,6 +6,7 @@ export default function SubscriberDashboard({
   userSubscription,
   poolPassContract,
   userAddress,
+  blockTimestamp,
   onActionSuccess,
   onExplorePlans,
 }) {
@@ -32,6 +33,7 @@ export default function SubscriberDashboard({
           subscription={userSubscription}
           poolPassContract={poolPassContract}
           userAddress={userAddress}
+          blockTimestamp={blockTimestamp}
           onActionSuccess={onActionSuccess}
         />
       ) : (

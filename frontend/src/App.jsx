@@ -252,6 +252,7 @@ export default function App() {
               userSubscription={userSubscription}
               poolPassContract={contracts?.poolPass}
               userAddress={userAddress}
+              blockTimestamp={blockTimestamp}
               onActionSuccess={loadData}
               onExplorePlans={() => setActiveTab('plans')}
             />
@@ -265,6 +266,7 @@ export default function App() {
               poolPassContract={contracts?.poolPass}
               tokenContract={contracts?.token}
               userAddress={userAddress}
+              blockTimestamp={blockTimestamp}
               onSubscribeSuccess={() => {
                 loadData();
                 setActiveTab('subscriptions');

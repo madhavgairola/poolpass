@@ -106,3 +106,70 @@ export function formatTimeRemaining(seconds) {
   if (hours > 0) return `${hours}h ${minutes}m left`;
   return `${minutes}m ${Math.floor(sec % 60)}s left`;
 }
+
+export function formatTimestamp(timestampSec) {
+  if (!timestampSec) return "—";
+  const date = new Date(Number(timestampSec) * 1000);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+// Query on-chain billing and yield settlement events for user
+export async function fetchUserActivity(poolPassContract, userAddress) {
+  if (!poolPassContract || !userAddress) return [];
+  try {
+    const provider = getRpcProvider();
+    const [subEvents, settleEvents, withdrawEvents] = await Promise.all([
+      poolPassContract.queryFilter(poolPassContract.filters.Subscribed(userAddress)),
+      poolPassContract.queryFilter(poolPassContract.filters.YieldSettled(userAddress)),
+      poolPassContract.queryFilter(poolPassContract.filters.PrincipalWithdrawn(userAddress)),
+    ]);
+
+    const activity = [];
+
+    for (const ev of subEvents) {
+      const block = await provider.getBlock(ev.blockNumber);
+      activity.push({
+        type: 'STAKE_ACTIVATION',
+        title: 'Pass Collateral Staked',
+        amount: ev.args[2],
+        timestamp: block ? block.timestamp : 0,
+        txHash: ev.transactionHash,
+        targetFee: ev.args[5],
+      });
+    }
+
+    for (const ev of settleEvents) {
+      const block = await provider.getBlock(ev.blockNumber);
+      activity.push({
+        type: 'YIELD_SETTLEMENT',
+        title: 'Subscription Payment Settled',
+        amount: ev.args[2],
+        timestamp: block ? block.timestamp : 0,
+        txHash: ev.transactionHash,
+        recipient: ev.args[1],
+      });
+    }
+
+    for (const ev of withdrawEvents) {
+      const block = await provider.getBlock(ev.blockNumber);
+      activity.push({
+        type: 'PRINCIPAL_WITHDRAWAL',
+        title: 'Principal Recovered at Maturity',
+        amount: ev.args[1],
+        timestamp: block ? block.timestamp : 0,
+        txHash: ev.transactionHash,
+      });
+    }
+
+    // Sort newest first
+    activity.sort((a, b) => b.timestamp - a.timestamp);
+    return activity;
+  } catch (err) {
+    console.error("Error querying contract events:", err);
+    return [];
+  }
+}
