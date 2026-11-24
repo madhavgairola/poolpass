@@ -1,0 +1,31 @@
+{
+  "name": "poolpass-blockchain-pbl",
+  "version": "1.0.0",
+  "description": "PoolPass – A Blockchain-Based Yield-Funded Subscription System (26B16CS317)",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:hardhat": "hardhat run scripts/deploy.js",
+    "frontend:install": "cd frontend && npm install",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "blockchain",
+    "solidity",
+    "hardhat",
+    "yield-farming",
+    "defi",
+    "subscriptions"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.6.1",
+    "hardhat": "^2.29.2"
+  }
+}

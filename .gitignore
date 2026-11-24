@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build artifacts
+artifacts/
+cache/
+frontend/dist/
+
+# Environment and local settings
+.env
+*.local
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Agent harnesses & local settings
+.agent/
+.agents/
+.claude/
+.codex/
+.gemini/

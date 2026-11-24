@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  .font-mono, code, .tabular-nums {
+    font-family: 'JetBrains Mono', monospace;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+/* Custom crisp scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+/* Precision surface classes linked to Tailwind dark: mode */
+.surface-panel {
+  @apply bg-white dark:bg-[#111318] border border-slate-200 dark:border-[#1f2430] transition-colors;
+}
+
+.surface-elevated {
+  @apply bg-slate-50 dark:bg-[#161922] border border-slate-200 dark:border-[#262c3c] transition-colors;
+}
