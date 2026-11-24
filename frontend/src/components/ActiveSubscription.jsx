@@ -1,8 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Play,
-  Pause,
-  FastForward,
   RotateCcw,
   TrendingUp,
   ArrowDownToLine,
@@ -16,7 +13,7 @@ import {
   ChevronRight,
   Zap,
 } from 'lucide-react';
-import { formatToken, formatTimeRemaining, formatTimestamp, evmIncreaseTime, fetchUserActivity } from '../utils/web3';
+import { formatToken, formatTimeRemaining, formatTimestamp, fetchUserActivity } from '../utils/web3';
 import { ethers } from 'ethers';
 
 export default function ActiveSubscription({
@@ -26,18 +23,10 @@ export default function ActiveSubscription({
   blockTimestamp,
   onActionSuccess,
 }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [simSpeedMs, setSimSpeedMs] = useState(2000); // 2000ms = 1 week
-  const [simulatedWeeksCount, setSimulatedWeeksCount] = useState(0);
-  const [autoSettle, setAutoSettle] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
   const [activityHistory, setActivityHistory] = useState([]);
   const [streamTick, setStreamTick] = useState(0);
-
-  // Playback timer ref
-  const playIntervalRef = useRef(null);
-  const isExecutingRef = useRef(false);
 
   if (!subscription || !subscription.stakedPrincipal || subscription.stakedPrincipal === 0n || subscription.isWithdrawn) {
     return null;
@@ -148,61 +137,6 @@ export default function ActiveSubscription({
     coveragePercent = Math.min(100, Math.round(((yieldSettledFloat + accruedFloat) / targetFeeFloat) * 100));
   }
 
-  // Execute Step Forward (1 Week = 7 days)
-  const stepTime = async (secondsToAdd = 7 * 86400, label = '1 week') => {
-    if (isExecutingRef.current) return;
-    try {
-      isExecutingRef.current = true;
-      await evmIncreaseTime(secondsToAdd);
-      setSimulatedWeeksCount((prev) => prev + Math.round(secondsToAdd / (7 * 86400)));
-
-      if (onActionSuccess) {
-        await onActionSuccess();
-      }
-
-      // Check if auto-settle should trigger
-      if (autoSettle && poolPassContract) {
-        // Query latest accrued yield directly
-        const freshAccrued = await poolPassContract.getAccruedYield(userAddress);
-        const freshAccruedFloat = parseFloat(ethers.formatEther(freshAccrued));
-
-        // If accrued enough to pay at least half a month or full cycle fee
-        if (freshAccruedFloat >= 1.0) {
-          setActionMessage(`Auto-Settlement: Harvesting ${freshAccruedFloat.toFixed(2)} mUSDC to Provider Treasury...`);
-          const tx = await poolPassContract.settleYield(userAddress);
-          await tx.wait();
-          setActionMessage(`✓ Auto-Settled: ${freshAccruedFloat.toFixed(2)} mUSDC routed to Treasury for cycle payment.`);
-          if (onActionSuccess) await onActionSuccess();
-          setTimeout(() => setActionMessage(''), 4000);
-        }
-      }
-    } catch (err) {
-      console.error("Simulation step error:", err);
-    } finally {
-      isExecutingRef.current = false;
-    }
-  };
-
-  // Playback Interval Controller
-  useEffect(() => {
-    if (isPlaying) {
-      playIntervalRef.current = setInterval(() => {
-        stepTime(7 * 86400, '1 week');
-      }, simSpeedMs);
-    } else {
-      if (playIntervalRef.current) {
-        clearInterval(playIntervalRef.current);
-        playIntervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (playIntervalRef.current) {
-        clearInterval(playIntervalRef.current);
-      }
-    };
-  }, [isPlaying, simSpeedMs, autoSettle, poolPassContract, userAddress]);
-
   // Manual Settle Handler
   const handleSettle = async () => {
     if (!poolPassContract) return;
@@ -249,91 +183,7 @@ export default function ActiveSubscription({
 
   return (
     <div className="space-y-6">
-      {/* 1. Interactive Fast-Forward Simulation Controller */}
-      <div className="surface-panel rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm bg-gradient-to-r from-emerald-500/5 via-transparent to-slate-500/5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-2.5 w-2.5 relative">
-                {isPlaying && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                )}
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isPlaying ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-              </span>
-              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                {isPlaying ? 'Live Time-Travel Engine • Fast-Forward Active' : 'Interactive Playback Engine'}
-              </h3>
-              {simulatedWeeksCount > 0 && (
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                  +{simulatedWeeksCount} Weeks Simulated
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Run continuous time-travel to watch yield streaming, milestone payment triggers, and automated settlement receipts in real-time.
-            </p>
-          </div>
-
-          {/* Controls Cluster */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Play / Pause Toggle Button */}
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition flex items-center gap-2 shadow-sm cursor-pointer ${
-                isPlaying
-                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
-                  : 'bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00e599] dark:hover:bg-[#00c985] text-white dark:text-[#090a0d]'
-              }`}
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="w-4 h-4 fill-current" />
-                  <span>Pause Time</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Play Simulation (+1 Wk / {simSpeedMs / 1000}s)</span>
-                </>
-              )}
-            </button>
-
-            {/* Manual Step Forward Buttons */}
-            <button
-              onClick={() => stepTime(7 * 86400, '1 week')}
-              disabled={isPlaying}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
-              title="Step forward 1 week (7 days)"
-            >
-              <FastForward className="w-3.5 h-3.5" />
-              <span>+1 Week</span>
-            </button>
-
-            <button
-              onClick={() => stepTime(30 * 86400, '1 month')}
-              disabled={isPlaying}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-mono text-slate-700 dark:text-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
-              title="Step forward 1 month (30 days)"
-            >
-              <FastForward className="w-3.5 h-3.5" />
-              <span>+1 Month</span>
-            </button>
-
-            {/* Auto-Settle Policy Toggle */}
-            <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={autoSettle}
-                onChange={(e) => setAutoSettle(e.target.checked)}
-                className="w-3.5 h-3.5 text-emerald-600 rounded focus:ring-0 cursor-pointer"
-              />
-              <span className="text-slate-700 dark:text-slate-300">Auto-Harvest Milestones</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Main Subscription Status & Metrics Card */}
+      {/* Main Subscription Status & Metrics Card */}
       <div className="surface-panel rounded-2xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-sm">
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800">

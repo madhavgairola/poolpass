@@ -4,7 +4,7 @@ import Header from './components/Header';
 import SubscriberDashboard from './components/SubscriberDashboard';
 import PlanSelector from './components/PlanSelector';
 import ProtocolTreasuryView from './components/ProtocolTreasuryView';
-import DevSandbox from './components/DevSandbox';
+import SimulationDrawer from './components/SimulationDrawer';
 import {
   DEMO_ACCOUNTS,
   getLocalSigner,
@@ -12,7 +12,7 @@ import {
   getContracts,
   triggerFaucet,
 } from './utils/web3';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Terminal } from 'lucide-react';
 
 export default function App() {
   // Theme state: 'dark' | 'light'
@@ -33,8 +33,11 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Section Tab Navigation: 'subscriptions' | 'plans' | 'analytics' | 'sandbox'
+  // Section Tab Navigation: 'subscriptions' | 'plans' | 'analytics'
   const [activeTab, setActiveTab] = useState('subscriptions');
+
+  // Simulation Drawer state (floating pop-up trigger)
+  const [isSimulationOpen, setIsSimulationOpen] = useState(false);
 
   // Wallet and Signer
   const [walletType, setWalletType] = useState('local'); // 'local' | 'metamask'
@@ -200,7 +203,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-between transition-colors">
       <div>
-        {/* Universal Header with Navigation Tabs */}
+        {/* Sleek Centered Header */}
         <Header
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -212,9 +215,6 @@ export default function App() {
           setCurrentAccountIndex={setCurrentAccountIndex}
           userAddress={userAddress}
           tokenBalance={tokenBalance}
-          onRefresh={loadData}
-          onFaucet={handleFaucet}
-          isRefreshing={isRefreshing}
           hasActiveSubscription={hasActiveSubscription}
         />
 
@@ -244,7 +244,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Section View Container */}
+        {/* Main Application Surface */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Tab 1: Subscriptions Dashboard */}
           {activeTab === 'subscriptions' && (
@@ -285,21 +285,33 @@ export default function App() {
               treasuryAddress={treasuryAddress}
             />
           )}
-
-          {/* Tab 4: Developer Sandbox Console */}
-          {activeTab === 'sandbox' && (
-            <DevSandbox
-              blockNumber={blockNumber}
-              blockTimestamp={blockTimestamp}
-              currentAccountIndex={currentAccountIndex}
-              setCurrentAccountIndex={setCurrentAccountIndex}
-              userAddress={userAddress}
-              onActionSuccess={loadData}
-            />
-          )}
         </main>
       </div>
-      {/* Footer has been removed as requested */}
+
+      {/* Floating Simulation Engine Pop-up Button */}
+      <button
+        onClick={() => setIsSimulationOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-900/95 dark:bg-slate-800/95 hover:bg-slate-900 dark:hover:bg-slate-700 text-white border border-slate-700/60 shadow-2xl backdrop-blur-md text-xs font-mono transition cursor-pointer hover:scale-105 active:scale-95"
+        title="Open Simulation & Playback Engine"
+      >
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span className="font-sans font-semibold">Dev Sandbox</span>
+        <Terminal className="w-3.5 h-3.5 text-slate-400" />
+      </button>
+
+      {/* Slide-out Simulation Drawer */}
+      <SimulationDrawer
+        isOpen={isSimulationOpen}
+        onClose={() => setIsSimulationOpen(false)}
+        blockNumber={blockNumber}
+        blockTimestamp={blockTimestamp}
+        currentAccountIndex={currentAccountIndex}
+        setCurrentAccountIndex={setCurrentAccountIndex}
+        userAddress={userAddress}
+        tokenBalance={tokenBalance}
+        poolPassContract={contracts?.poolPass}
+        onActionSuccess={loadData}
+      />
     </div>
   );
 }
