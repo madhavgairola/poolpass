@@ -444,6 +444,10 @@ npm run frontend:dev
 Open http://localhost:5173 in a web browser.
 
 ### 5.6 Project Directory Structure
+
+![Figure 5.1. PoolPass project repository directory structure](diagrams/figure_5_6_project_structure.png)
+Figure 5.1. PoolPass project repository directory structure.
+
 ```
 poolpass/
 ├── contracts/
