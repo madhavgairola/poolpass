@@ -262,6 +262,15 @@ Figure 4.1. PoolPass system architecture.
 +-------------------------------------------------------------------------+
 ```
 
+| Component | Main Responsibility | Repository Artefacts |
+| :--- | :--- | :--- |
+| Frontend dApp | Single-page UI with Overview savings dashboard, active subscription controller, time-travel playback engine, plans matrix, custom plan modal, and protocol treasury explorer. | frontend/src/ (React 19, Vite, Ethers.js v6, Tailwind CSS) |
+| Core Subscription Contract | Manages subscription tiers, duration-adjusted collateral math, custom plan registry, timelock enforcement, yield harvesting, and 100% principal recovery. | contracts/PoolPass.sol |
+| Mock Yield Pool | Simulates Aave/Compound lending pool with 1,000,000 mUSDC reserve liquidity, calculating linear interest accrual over time and non-custodial harvest routing. | contracts/MockYieldPool.sol |
+| Mock ERC-20 Token | 18-decimal stablecoin (mUSDC) implementing standard transfers, allowances, and an open faucet for testing. | contracts/MockERC20.sol |
+| Local Blockchain Environment | Provides local EVM execution (Chain ID 31337), deterministic test accounts (Alice, Bob, Treasury, Deployer), and RPC time-travel methods (evm_increaseTime, evm_mine). | hardhat.config.js, scripts/deploy.js |
+| Automated Test Suite | 11 unit and integration tests verifying collateral math, invariant preservation, early withdrawal restrictions, and time-travel yield accrual. | test/PoolPass.test.js |
+
 ### 4.2 Smart Contract Architecture and State Machine
 The core contracts define the subscription rules:
 
@@ -297,6 +306,17 @@ struct Subscription {
 3. Yield Harvesting: Calling settleYield moves accrued interest from the yield pool to the provider treasury without touching the user deposit.
 4. Matured (Unlocked): The block timestamp passes lock expiry. The principal is now unlocked and eligible for withdrawal.
 5. Withdrawn: User calls withdrawPrincipal, returning 100% of their staked deposit to their wallet.
+
+| Function | Purpose |
+| :--- | :--- |
+| calculateRequiredStake | Computes duration-adjusted required collateral, nominal target fee, and effective APY for a given plan and duration option. |
+| subscribe | Checks token allowance, transfers collateral from user into the vault, deposits it to MockYieldPool, and activates the subscription. |
+| createCustomPlan | Registers a new custom subscription plan on-chain with arbitrary name and monthly fee (callable by any user). |
+| settleYield | Harvests accumulated lending interest from the yield pool directly to the provider treasury without touching user principal. |
+| withdrawPrincipal | Verifies block.timestamp >= lockExpiry, withdraws 100% of staked collateral from MockYieldPool, and returns it to the subscriber. |
+| restake | Extends subscription term or switches plans using existing principal without requiring full withdrawal first. |
+| getAccruedYield | View function returning current unharvested lending interest for a subscriber. |
+| getUserSubscription | View function returning comprehensive status including plan name, staked principal, timestamps, fees settled, and remaining time. |
 
 ### 4.3 Staking, Yield Harvesting and Principal Refund Lifecycle
 
