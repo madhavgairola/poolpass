@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700">
+  <defs>
+    <!-- Arrow marker definitions -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#1e293b"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#15803d"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#1d4ed8"/>
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1000" height="700" fill="#ffffff" />
+
+  <!-- 1. Top Tier: PoolPass Web App -->
+  <g transform="translate(100, 30)">
+    <rect width="800" height="150" rx="14" ry="14" fill="#fffdfa" stroke="#b45309" stroke-width="2.5" />
+    <text x="400" y="36" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#78350f" text-anchor="middle">
+      PoolPass Web Application (React 19 + Ethers.js v6 + Vite)
+    </text>
+    
+    <circle cx="65" cy="65" r="3" fill="#92400e" />
+    <text x="80" y="69" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#334155">
+      Overview Dashboard, Subscriptions &amp; Stream Ticker, Plans Matrix, Protocol Treasury
+    </text>
+    
+    <circle cx="65" cy="90" r="3" fill="#92400e" />
+    <text x="80" y="94" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#334155">
+      On-Chain Custom Plan Creator (Gemini Pro, Cursor, ChatGPT, etc.)
+    </text>
+    
+    <circle cx="65" cy="115" r="3" fill="#92400e" />
+    <text x="80" y="119" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#334155">
+      Interactive Fast-Forward Time-Travel Simulation Engine (+1 Wk / 2s Playback)
+    </text>
+    
+    <text x="400" y="140" font-family="Arial, Helvetica, sans-serif" font-size="12" font-style="italic" fill="#b45309" text-anchor="middle">
+      Served locally at http://localhost:5173
+    </text>
+  </g>
+
+  <!-- Arrows from Web App to Middle Layer -->
+  <!-- Left arrow: Web3 / Contract Calls -->
+  <path d="M 285 180 L 285 250" fill="none" stroke="#15803d" stroke-width="2" marker-end="url(#arrow-green)" />
+  <rect x="195" y="202" width="180" height="22" rx="4" fill="#ffffff" />
+  <text x="285" y="217" font-family="Arial, Helvetica, sans-serif" font-size="12" font-style="italic" fill="#15803d" text-anchor="middle">
+    Ethers.js / Contract Calls
+  </text>
+
+  <!-- Right arrow: JSON-RPC State & Time Travel -->
+  <path d="M 715 180 L 715 250" fill="none" stroke="#1d4ed8" stroke-width="2" marker-end="url(#arrow-blue)" />
+  <rect x="615" y="202" width="200" height="22" rx="4" fill="#ffffff" />
+  <text x="715" y="217" font-family="Arial, Helvetica, sans-serif" font-size="12" font-style="italic" fill="#1d4ed8" text-anchor="middle">
+    EVM JSON-RPC (HTTP: 8545)
+  </text>
+
+  <!-- 2. Middle Layer Left: Smart Contract & Protocol Logic -->
+  <g transform="translate(60, 255)">
+    <rect width="410" height="205" rx="14" ry="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5" />
+    <text x="205" y="32" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#166534" text-anchor="middle">
+      Smart Contract &amp; Custody Layer
+    </text>
+    <circle cx="35" cy="62" r="3" fill="#15803d" />
+    <text x="50" y="66" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      PoolPass.sol (Paris EVM target, Solidity 0.8.20)
+    </text>
+    <circle cx="35" cy="88" r="3" fill="#15803d" />
+    <text x="50" y="92" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      Dynamic duration-adjusted stake calculations
+    </text>
+    <circle cx="35" cy="114" r="3" fill="#15803d" />
+    <text x="50" y="118" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      createCustomPlan(): Dynamic tier registration
+    </text>
+    <circle cx="35" cy="140" r="3" fill="#15803d" />
+    <text x="50" y="144" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      Strict timelock enforcement (block.timestamp)
+    </text>
+    <circle cx="35" cy="166" r="3" fill="#15803d" />
+    <text x="50" y="170" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      MockERC20.sol (mUSDC 18-decimals, Faucet)
+    </text>
+    <circle cx="35" cy="190" r="3" fill="#15803d" />
+    <text x="50" y="193" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#475569">
+      100% Principal recovery at maturity
+    </text>
+  </g>
+
+  <!-- Horizontal bidirectional arrow between Contracts & Node -->
+  <path d="M 470 357 L 525 357" fill="none" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)" />
+  <path d="M 530 367 L 475 367" fill="none" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- 2. Middle Layer Right: Local Hardhat Node -->
+  <g transform="translate(530, 255)">
+    <rect width="410" height="205" rx="14" ry="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5" />
+    <text x="205" y="32" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1e40af" text-anchor="middle">
+      Hardhat Blockchain Node (8545, chain 31337)
+    </text>
+    <circle cx="35" cy="62" r="3" fill="#1d4ed8" />
+    <text x="50" y="66" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      Local EVM execution environment (Automining)
+    </text>
+    <circle cx="35" cy="88" r="3" fill="#1d4ed8" />
+    <text x="50" y="92" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      Deterministic pre-funded test accounts (Alice, Bob)
+    </text>
+    <circle cx="35" cy="114" r="3" fill="#1d4ed8" />
+    <text x="50" y="118" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      evm_increaseTime / evm_mine RPC time-travel
+    </text>
+    <circle cx="35" cy="140" r="3" fill="#1d4ed8" />
+    <text x="50" y="144" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      Event emission &amp; queryFilter activity logging
+    </text>
+    <circle cx="35" cy="166" r="3" fill="#1d4ed8" />
+    <text x="50" y="170" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1e293b">
+      Automated deployment via scripts/deploy.js
+    </text>
+    <circle cx="35" cy="190" r="3" fill="#1d4ed8" />
+    <text x="50" y="193" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#475569">
+      Deterministic Chain ID: 31337
+    </text>
+  </g>
+
+  <!-- Arrows from Middle to Bottom Layer -->
+  <!-- Down arrow left: Principal deposit to Yield Pool -->
+  <path d="M 265 460 L 265 520" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)" />
+  <rect x="180" y="478" width="170" height="20" rx="4" fill="#ffffff" />
+  <text x="265" y="492" font-family="Arial, Helvetica, sans-serif" font-size="11" font-style="italic" fill="#7c3aed" text-anchor="middle">
+    Deposit &amp; Yield Accrual
+  </text>
+
+  <!-- Down arrow right: Yield harvest to Treasury -->
+  <path d="M 735 460 L 735 520" fill="none" stroke="#0f766e" stroke-width="2" marker-end="url(#arrow)" />
+  <rect x="640" y="478" width="190" height="20" rx="4" fill="#ffffff" />
+  <text x="735" y="492" font-family="Arial, Helvetica, sans-serif" font-size="11" font-style="italic" fill="#0f766e" text-anchor="middle">
+    Periodic Yield Settlement
+  </text>
+
+  <!-- 3. Bottom Layer Left: Mock Yield Pool -->
+  <g transform="translate(60, 525)">
+    <rect width="410" height="115" rx="14" ry="14" fill="#faf5ff" stroke="#7c3aed" stroke-width="2" />
+    <text x="205" y="28" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#581c87" text-anchor="middle">
+      MockYieldPool (Aave / Compound Simulation)
+    </text>
+    <text x="205" y="52" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#334155" text-anchor="middle">
+      Simulates institutional lending liquidity (1,000,000 mUSDC reserve)
+    </text>
+    <text x="205" y="73" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#334155" text-anchor="middle">
+      Timestamp-based linear interest rate calculation: (P * APY * dt) / 365d
+    </text>
+    <text x="205" y="94" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#7c3aed" font-weight="bold" text-anchor="middle">
+      Principal stays separate and non-custodial
+    </text>
+  </g>
+
+  <!-- 3. Bottom Layer Right: Provider Treasury Vault -->
+  <g transform="translate(530, 525)">
+    <rect width="410" height="115" rx="14" ry="14" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" />
+    <text x="205" y="28" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#115e59" text-anchor="middle">
+      Service Provider Treasury Vault
+    </text>
+    <text x="205" y="52" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#334155" text-anchor="middle">
+      Designated treasury recipient address (0x7099...79C8)
+    </text>
+    <text x="205" y="73" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#334155" text-anchor="middle">
+      Receives harvested yield payments up to monthly plan fee
+    </text>
+    <text x="205" y="94" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#0d9488" font-weight="bold" text-anchor="middle">
+      Automated cashflow with zero payment card churn
+    </text>
+  </g>
+
+  <!-- Figure Label Caption -->
+  <text x="500" y="682" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">
+    Figure 4.1. PoolPass system architecture.
+  </text>
+</svg>

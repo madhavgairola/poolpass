@@ -219,6 +219,9 @@ Committing to a 1-year lock lowers the required deposit by 60.0% compared to a 1
 ### 4.1 System Architecture
 PoolPass is structured into three main layers: the smart contract layer, the local blockchain node, and the frontend user interface.
 
+![Figure 4.1. PoolPass system architecture](diagrams/figure_4_1_system_architecture.png)
+Figure 4.1. PoolPass system architecture.
+
 ```
 +-------------------------------------------------------------------------+
 |                       POOLPASS FRONTEND dAPP                            |
@@ -296,6 +299,9 @@ struct Subscription {
 5. Withdrawn: User calls withdrawPrincipal, returning 100% of their staked deposit to their wallet.
 
 ### 4.3 Staking, Yield Harvesting and Principal Refund Lifecycle
+
+![Figure 4.2. Subscription, staking, yield harvesting and principal recovery lifecycle workflow](diagrams/figure_4_2_lifecycle_workflow.png)
+Figure 4.2. Subscription, staking, yield harvesting and principal recovery lifecycle workflow.
 
 ```
 [User Wallet]

@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" width="1100" height="360">
+  <defs>
+    <marker id="workflow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#0f172a"/>
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1100" height="360" fill="#ffffff" />
+
+  <!-- Step 1 Header & Box -->
+  <g transform="translate(30, 40)">
+    <text x="85" y="25" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0f172a" text-anchor="middle">
+      Step 1
+    </text>
+    <rect x="0" y="45" width="170" height="200" rx="14" ry="14" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" />
+    <text x="85" y="90" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#1e40af" text-anchor="middle">
+      Select Plan &amp;
+    </text>
+    <text x="85" y="110" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#1e40af" text-anchor="middle">
+      Approve Token
+    </text>
+    <text x="85" y="145" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      User selects tier
+    </text>
+    <text x="85" y="165" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      (or custom plan)
+    </text>
+    <text x="85" y="185" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      and lock horizon;
+    </text>
+    <text x="85" y="210" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#1d4ed8" text-anchor="middle">
+      calls approve()
+    </text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <path d="M 205 185 L 240 185" fill="none" stroke="#0f172a" stroke-width="2.5" marker-end="url(#workflow-arrow)" />
+
+  <!-- Step 2 Header & Box -->
+  <g transform="translate(245, 40)">
+    <text x="85" y="25" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0f172a" text-anchor="middle">
+      Step 2
+    </text>
+    <rect x="0" y="45" width="170" height="200" rx="14" ry="14" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2" />
+    <text x="85" y="90" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#5b21b6" text-anchor="middle">
+      Stake Collateral
+    </text>
+    <text x="85" y="110" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#5b21b6" text-anchor="middle">
+      into Vault
+    </text>
+    <text x="85" y="145" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      Collateral deposited
+    </text>
+    <text x="85" y="165" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      into PoolPass;
+    </text>
+    <text x="85" y="185" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      timelock expiry set
+    </text>
+    <text x="85" y="210" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#6d28d9" text-anchor="middle">
+      calls subscribe()
+    </text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <path d="M 420 185 L 455 185" fill="none" stroke="#0f172a" stroke-width="2.5" marker-end="url(#workflow-arrow)" />
+
+  <!-- Step 3 Header & Box -->
+  <g transform="translate(460, 40)">
+    <text x="85" y="25" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0f172a" text-anchor="middle">
+      Step 3
+    </text>
+    <rect x="0" y="45" width="170" height="200" rx="14" ry="14" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+    <text x="85" y="90" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#15803d" text-anchor="middle">
+      Continuous Yield
+    </text>
+    <text x="85" y="110" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#15803d" text-anchor="middle">
+      Accrual in Pool
+    </text>
+    <text x="85" y="145" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      Principal deployed
+    </text>
+    <text x="85" y="165" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      to MockYieldPool;
+    </text>
+    <text x="85" y="185" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      interest accumulates
+    </text>
+    <text x="85" y="210" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#16a34a" text-anchor="middle">
+      linearly over time
+    </text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <path d="M 635 185 L 670 185" fill="none" stroke="#0f172a" stroke-width="2.5" marker-end="url(#workflow-arrow)" />
+
+  <!-- Step 4 Header & Box -->
+  <g transform="translate(675, 40)">
+    <text x="85" y="25" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0f172a" text-anchor="middle">
+      Step 4
+    </text>
+    <rect x="0" y="45" width="170" height="200" rx="14" ry="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="2" />
+    <text x="85" y="90" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#b45309" text-anchor="middle">
+      Periodic Yield
+    </text>
+    <text x="85" y="110" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#b45309" text-anchor="middle">
+      Settlement
+    </text>
+    <text x="85" y="145" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      Accrued yield is
+    </text>
+    <text x="85" y="165" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      harvested directly
+    </text>
+    <text x="85" y="185" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      to provider treasury;
+    </text>
+    <text x="85" y="210" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#d97706" text-anchor="middle">
+      calls settleYield()
+    </text>
+  </g>
+
+  <!-- Arrow 4 -> 5 -->
+  <path d="M 850 185 L 885 185" fill="none" stroke="#0f172a" stroke-width="2.5" marker-end="url(#workflow-arrow)" />
+
+  <!-- Step 5 Header & Box -->
+  <g transform="translate(890, 40)">
+    <text x="85" y="25" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0f172a" text-anchor="middle">
+      Step 5
+    </text>
+    <rect x="0" y="45" width="170" height="200" rx="14" ry="14" fill="#fff1f2" stroke="#f43f5e" stroke-width="2" />
+    <text x="85" y="90" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#be123c" text-anchor="middle">
+      Lock Maturity &amp;
+    </text>
+    <text x="85" y="110" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#be123c" text-anchor="middle">
+      100% Refund
+    </text>
+    <text x="85" y="145" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      Lock period expires;
+    </text>
+    <text x="85" y="165" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      user withdraws 100%
+    </text>
+    <text x="85" y="185" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#475569" text-anchor="middle">
+      of staked principal;
+    </text>
+    <text x="85" y="210" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#e11d48" text-anchor="middle">
+      withdrawPrincipal()
+    </text>
+  </g>
+
+  <!-- Figure Label Caption -->
+  <text x="550" y="320" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle">
+    Figure 4.2. Subscription, staking, yield harvesting and principal recovery lifecycle workflow.
+  </text>
+</svg>
