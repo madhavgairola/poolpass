@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import Header from './components/Header';
+import HomeOverview from './components/HomeOverview';
 import SubscriberDashboard from './components/SubscriberDashboard';
 import PlanSelector from './components/PlanSelector';
 import ProtocolTreasuryView from './components/ProtocolTreasuryView';
@@ -33,8 +34,8 @@ export default function App() {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Section Tab Navigation: 'subscriptions' | 'plans' | 'analytics'
-  const [activeTab, setActiveTab] = useState('subscriptions');
+  // Section Tab Navigation: 'home' | 'subscriptions' | 'plans' | 'analytics'
+  const [activeTab, setActiveTab] = useState('home');
 
   // Simulation Drawer state (floating pop-up trigger)
   const [isSimulationOpen, setIsSimulationOpen] = useState(false);
@@ -246,6 +247,19 @@ export default function App() {
 
         {/* Main Application Surface */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Tab 0: Home / Overview Dashboard */}
+          {activeTab === 'home' && (
+            <HomeOverview
+              userSubscription={userSubscription}
+              plans={plans}
+              durationOptions={durationOptions}
+              blockTimestamp={blockTimestamp}
+              tokenBalance={tokenBalance}
+              onNavigate={(tab) => setActiveTab(tab)}
+              onOpenSimulation={() => setIsSimulationOpen(true)}
+            />
+          )}
+
           {/* Tab 1: Subscriptions Dashboard */}
           {activeTab === 'subscriptions' && (
             <SubscriberDashboard

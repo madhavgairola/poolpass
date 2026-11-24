@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Shield, Sparkles, BarChart3, ChevronDown } from 'lucide-react';
+import { Sun, Moon, Shield, Sparkles, BarChart3, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { DEMO_ACCOUNTS, formatToken } from '../utils/web3';
 
 export default function Header({
@@ -17,6 +17,7 @@ export default function Header({
   onOpenSimulation,
 }) {
   const tabs = [
+    { id: 'home', label: 'Overview', icon: LayoutDashboard },
     { id: 'subscriptions', label: 'Subscriptions', icon: Shield, badge: hasActiveSubscription ? 'Active' : null },
     { id: 'plans', label: 'Plans', icon: Sparkles },
     { id: 'analytics', label: 'Treasury & Analytics', icon: BarChart3 },
